@@ -1,0 +1,17 @@
+{
+    "name": "lightning_manager",
+    "keywords": "robus,network,microservice,luos,operating system,os,embedded,communication,service",
+    "description": "Manage steps ligthning animations",
+    "version": "1.0.0",
+    "authors": {
+        "name": "lightning_manager",
+        "url": "https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=2&ved=2ahUKEwjestXmvY3oAhUTD2MBHQoJDooQFjABegQIBxAB&url=https%3A%2F%2Fwww.st.com%2Fresource%2Fen%2Fdatasheet%2Fvl53l0x.pdf&usg=AOvVaw2D772P0Ms66VJ7lbKKynB-"
+    },
+    "licence": "MIT",
+    "dependencies": [
+        {
+            "name": "luos/Luos",
+            "version": "^2.0.0"
+        }
+    ]
+}
