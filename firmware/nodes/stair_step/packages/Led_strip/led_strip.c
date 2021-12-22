@@ -6,6 +6,7 @@
  ******************************************************************************/
 #include "led_strip.h"
 #include "led_strip_drv.h"
+#include "product_config.h"
 
 /*******************************************************************************
  * Definitions
@@ -82,5 +83,29 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
         memset((void *)matrix + size, 0, (MAX_LED_NUMBER - size) * 3);
         imgsize = size;
         return;
+    }
+    if (msg->header.cmd == DELTA_COLOR)
+    {
+        // This is a custom derivative form of the picture allowing concurent access to the image by adding it.
+        // Check size
+        LUOS_ASSERT(msg->header.size <= MAX_LED_NUMBER);
+        for (int i = 0; i < msg->header.size; i++)
+        {
+            if ((int8_t)msg->data[i] != 0)
+            {
+                if (((int)matrix[i].b + (int8_t)msg->data[i]) >= 0)
+                {
+                    matrix[i].b += (int8_t)msg->data[i];
+                    matrix[i].g += (int8_t)msg->data[i];
+                    matrix[i].r += (int8_t)msg->data[i];
+                }
+                else // offset to zero
+                {
+                    matrix[i].b += 0;
+                    matrix[i].g += 0;
+                    matrix[i].r += 0;
+                }
+            }
+        }
     }
 }

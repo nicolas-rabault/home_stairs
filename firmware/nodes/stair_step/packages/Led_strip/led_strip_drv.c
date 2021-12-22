@@ -49,7 +49,7 @@ void LedStripDrv_Write(color_t *matrix)
     }
 }
 /******************************************************************************
- * @brief convert each rgb value to pixel values
+ * @brief convert each rgb value to PWM duty cycle values
  * @param color_t rgb value, number of led
  * @return None
  ******************************************************************************/

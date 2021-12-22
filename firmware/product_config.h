@@ -13,4 +13,10 @@ typedef enum
 {
     STEP_APP = LUOS_LAST_TYPE
 } alarm_t;
+
+typedef enum
+{
+    DELTA_COLOR = LUOS_LAST_STD_CMD
+} alarm_cmd_t;
+
 #endif /* PRODUCT_CONFIG_H */

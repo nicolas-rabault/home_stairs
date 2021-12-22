@@ -4,50 +4,86 @@
  * @author Nicolas Rabault
  * @version 1.0.0
  ******************************************************************************/
-#include "lightning_manager.h"
+#include "step_mngr.h"
 #include "product_config.h"
+#include <math.h>
+#include <stdbool.h>
 
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define UPDATE_PERIOD_MS 20
+#define UPDATE_PERIOD_MS    20                                  // Sensor update period
+#define FILTER_STENGTH      0.1                                 // Filtering strength of the sensor
+#define STAIR_LENGHT        2.2                                 // Stairs length meters
+#define STEP_NUMBER         11                                  // Number of step on the stairs
+#define STEP_WIDTH          0.69                                // Width of a step in meter
+#define WAVE_SPEED          1                                   // Propagation speed of the waves meter/seconds
+#define FRAME_RATE_MS       10                                  // Frame rate calculation
+#define FORCE_LIGHT_SCALING 0.0001                              // Scale factor between force value and light intensity
+#define LED_NBR             39                                  // Number of led per step
+#define LIGHT_TRESHOLD      0                                   // The minimal weight needed to trigger a wave
+#define SPACE_BETWEEN_LED   (STEP_WIDTH / LED_NBR)              // Space between leds
+#define ANIMATION_SMOOTH    4                                   // animation smothness should be %2
+#define DIST_RES            SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
+#define ANIM_SIZE           125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
 /*******************************************************************************
  * Variables
  ******************************************************************************/
 service_t *app;
 volatile control_t control_app;
+volatile force_t raw_force;
+
+uint16_t slot_map[STEP_NUMBER][LED_NBR] = {0};
 
 /*******************************************************************************
  * Function
  ******************************************************************************/
-static void StepMngr_MsgHandler(service_t *service, msg_t *msg) {
+static void frame_transmit(int8_t *delta_intensity);
+void compute_slot_map(void);
 
-    if (msg->header.cmd == IO_STATE)
+static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
+{
+
+    // We receive an end_detection, we need to initialize the sensor service to auto-update
+    if (msg->header.cmd == END_DETECTION)
     {
-        if (control_app.flux == PLAY)
+        // We need to control the local sensor if it exists, search if there is a local load sensor
+        uint16_t my_nodeid = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(service));
+        search_result_t filter_result;
+        RTFilter_Init(&filter_result);
+        RTFilter_Type(&filter_result, LOAD_TYPE);
+        RTFilter_Node(&filter_result, my_nodeid);
+
+        if (filter_result.result_nbr == 1)
         {
-            if (RoutingTB_TypeFromID(msg->header.source) == STATE_TYPE)
-            {
-                // this is the button reply we have filter it to manage monostability
-                if ((!last_btn_state) & (last_btn_state != msg->data[0]))
-                {
-                    lock = (!lock);
-                    state_switch++;
-                }
-            }
-            else
-            {
-                // this is an already filtered information
-                if ((lock != msg->data[0]))
-                {
-                    lock = msg->data[0];
-                    state_switch++;
-                }
-            }
-            last_btn_state = msg->data[0];
+            // Auto-update - ask to send its value each UPDATE_PERIOD_MS
+            msg_t send_msg;
+            send_msg.header.target      = filter_result.result_table[0]->id;
+            send_msg.header.target_mode = IDACK;
+            // Setup auto update each UPDATE_PERIOD_MS on load
+            // This value is resetted on all service at each detection
+            // It's important to setting it each time.
+            time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
+            TimeOD_TimeToMsg(&time, &send_msg);
+            send_msg.header.cmd = UPDATE_PUB;
+            Luos_SendMsg(service, &send_msg);
+
+            // Tare the sensor
+            send_msg.header.size = 0;
+            send_msg.header.cmd  = REINIT;
+            Luos_SendMsg(service, &send_msg);
+
+            // Scale the sensor
         }
-        return;
+        // To finish we have to compute the new slot_map
+        compute_slot_map();
     }
+
+    if (msg->header.cmd == FORCE)
+    {
+        ForceOD_ForceFromMsg(&raw_force, msg);
+    }
+
     if (msg->header.cmd == CONTROL)
     {
         control_app.unmap = msg->data[0];
@@ -76,46 +112,130 @@ void StepMngr_Init(void)
 
 void StepMngr_Loop(void)
 {
-    static short previous_id       = -1;
-    static uint32_t detection_date = 0;
-    // ********** hot plug management ************
-    // Check if we have done the first init or if service Id have changed
-    if (previous_id != RoutingTB_IDFromService(app))
+    /*
+     * This table represent the wave intensity per distance with a DIST_RES granularity with
+     * a max distance of STAIR_LENGHT.
+     */
+    static int8_t delta_intensity[ANIM_SIZE] = {0};
+    static uint32_t last_animation_date      = 0;
+    static uint32_t last_frame_date          = 0;
+    static force_t force;
+
+    // Check Animation timing : time = distance/speed
+    if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))))
     {
-        if (RoutingTB_IDFromService(app) == 0)
+        /*
+         * We have to insert weight values at slot 0.
+         * Then we have to move the values from our position to the end of the table
+         */
+        // Move values from 0 to the table end
+        for (int i = ANIM_SIZE; i > 0; i--)
         {
-            // We don't have any ID, meaning no detection occure or detection is occuring.
-            // someone is making a detection, let it finish.
-            // reset the init state to be ready to setup service at the end of detection
-            previous_id    = 0;
-            detection_date = Luos_GetSystick();
+            delta_intensity[i] = delta_intensity[i - 1];
         }
-        else
+        // Low pass filtering on the sensor value
+        force = force + ((raw_force - force) * FILTER_STENGTH);
+        // Then compute the new delta intensity and insert it into the animation table
+        delta_intensity[0] = force * FORCE_LIGHT_SCALING;
+        if (delta_intensity[0] < 0)
+            delta_intensity[0] = 0;
+        last_animation_date = Luos_GetSystick();
+    }
+
+    // Check Frame timing
+    if ((Luos_GetSystick() - last_frame_date >= FRAME_RATE_MS))
+    {
+        /*
+         * We have to compute a frame
+         * Frames are computed from the delta_intensity table
+         * The idea is to send the delta_intensity information to the leds corresponding to the distance.
+         */
+        frame_transmit(delta_intensity);
+        last_frame_date = Luos_GetSystick();
+    }
+}
+
+void frame_transmit(int8_t *delta_intensity)
+{
+
+    static int8_t frame[STEP_NUMBER][LED_NBR] = {0};
+    /*
+     * To compute a frame we have to :
+     * - parse all the leds step by step
+     * - compute the intensity depending on the corresponding value of the slot of slot_map
+     * - send the leds informations at each steps
+     */
+
+    // Find the step apps by getting a list off all available apps
+    search_result_t filter_result;
+    RTFilter_Init(&filter_result);
+    RTFilter_Type(&filter_result, COLOR_TYPE);
+
+    // Parse all the steps
+    for (int step_index = 0; step_index < filter_result.result_nbr; step_index++) // Step
+    {
+        int8_t delta_frame[LED_NBR] = {0};
+        // Parse all the led fo each steps
+        bool send_it = false;
+        for (int led_index = 0; led_index < LED_NBR; led_index++) // Led
         {
-            if ((Luos_GetSystick() - detection_date) > 100)
+            // Compute the delta intensity of this led
+            delta_frame[led_index]       = delta_intensity[slot_map[step_index][led_index]] - frame[step_index][led_index];
+            frame[step_index][led_index] = delta_intensity[slot_map[step_index][led_index]];
+            if (delta_frame[led_index] != 0)
             {
-                // Make services configurations
-                // Find the local load sensor
-                int id = RoutingTB_IDFromClosestType(app, LOAD_TYPE);
-                if (id > 0)
-                {
-                    msg_t msg;
-                    msg.header.target      = id;
-                    msg.header.target_mode = IDACK;
-                    // Setup auto update each UPDATE_PERIOD_MS on button
-                    // This value is resetted on all service at each detection
-                    // It's important to setting it each time.
-                    time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
-                    TimeOD_TimeToMsg(&time, &msg);
-                    msg.header.cmd = UPDATE_PUB;
-                    while (Luos_SendMsg(app, &msg) != SUCCEED)
-                    {
-                        Luos_Loop();
-                    }
-                }
-                previous_id = RoutingTB_IDFromService(app);
+                // We will have to send a message for this step
+                send_it = true;
             }
         }
-        return;
+        if (send_it)
+        {
+            // We have some information to transmit for this step
+            msg_t msg;
+            // step_index should be the index of the concerned app
+            msg.header.target      = filter_result.result_table[step_index]->id;
+            msg.header.target_mode = IDACK;
+            msg.header.cmd         = DELTA_COLOR;
+            msg.header.size        = sizeof(frame[step_index]);
+            memcpy(msg.data, delta_frame, sizeof(frame[step_index]));
+            Luos_SendMsg(app, &msg);
+        }
+    }
+}
+
+void compute_slot_map(void)
+{
+    /*
+     * To compute the slot_map we have to :
+     * - parse all the leds step by step
+     * - compute the distance of this led from the wave center
+     * - get the slot on delta_intensity correponding to the distance of this led
+     * - save it on the slot_map table
+     */
+
+    /* First compute the position of the wave source (basicaly it depend on the physical position of our current step)
+     * First define the step position.
+     * To do that we have to make the first step do the detection to have a deterministic numbers on steps
+     * This way the (node_id - 1) represent the step number
+     */
+    uint16_t my_nodeid        = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(app));
+    const float wave_center_x = (((STAIR_LENGHT / STEP_NUMBER) * (my_nodeid - 1)));
+    const float wave_center_y = STEP_WIDTH / 2.0;
+
+    // Parse all the steps
+    for (int step_index = 0; step_index < STEP_NUMBER; step_index++) // Step
+    {
+        // Compute the x distance of this step
+        const float x = step_index * (STAIR_LENGHT / STEP_NUMBER) - wave_center_x;
+        // Parse all the led fo each steps
+        for (int led_index = 0; led_index < LED_NBR; led_index++) // Led
+        {
+            // Compute the x distance of this led
+            const float y = led_index * SPACE_BETWEEN_LED - wave_center_y;
+            // Compute the distance of this led from the wave source
+            double distance = sqrt(((x) * (x)) + ((y) * (y)));
+            // Depending on this distance define the corresponding slot on delta_intensity and save this slot in the slot_map
+            slot_map[step_index][led_index] = (uint16_t)(distance / DIST_RES);
+        }
     }
 }
