@@ -35,7 +35,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#ifdef BOOTLOADER_MODE
+#define RSVD_SECTION ".rsvd.data,\"aw\",%nobits//"
+#define _RSVD        __attribute__((used, section(RSVD_SECTION)))
 
+static volatile _RSVD uint32_t VectorTable[48];
+#endif
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -88,7 +93,19 @@ int main(void)
     SystemClock_Config();
 
     /* USER CODE BEGIN SysInit */
+#ifdef BOOTLOADER_MODE
+    /* Copy the vector table from the Flash (mapped at the base of the application
+        load address 0x0800C800) to the base address of the SRAM at 0x20000000. */
+    for (uint32_t i = 0; i < 48; i++)
+    {
+        VectorTable[i] = *(__IO uint32_t *)(0x0800C800 + (i << 2));
+    }
 
+    /* Enable the SYSCFG peripheral clock*/
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
+    /* Remap SRAM at 0x00000000 */
+    __HAL_SYSCFG_REMAPMEMORY_SRAM();
+#endif
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
@@ -100,7 +117,7 @@ int main(void)
     Luos_Init();
     LedStrip_Init();
     Load_Init();
-    StepMngr_Init();
+    // StepMngr_Init();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -110,7 +127,7 @@ int main(void)
         Luos_Loop();
         LedStrip_Loop();
         Load_Loop();
-        StepMngr_Loop();
+        // StepMngr_Loop();
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
