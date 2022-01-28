@@ -75,6 +75,22 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
 
             // Scale the sensor
         }
+        RTFilter_Reset(&filter_result);
+        RTFilter_Type(&filter_result, COLOR_TYPE);
+        RTFilter_Node(&filter_result, my_nodeid);
+        if (filter_result.result_nbr == 1)
+        {
+            // Turn of my local led strip
+            msg_t send_msg;
+            send_msg.header.target      = filter_result.result_table[0]->id;
+            send_msg.header.target_mode = IDACK;
+            send_msg.header.size        = 3;
+            send_msg.header.cmd         = COLOR;
+            send_msg.data[0]            = 0;
+            send_msg.data[1]            = 0;
+            send_msg.data[2]            = 0;
+            Luos_SendMsg(service, &send_msg);
+        }
         // To finish we have to compute the new slot_map
         compute_slot_map();
     }
