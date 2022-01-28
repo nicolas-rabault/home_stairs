@@ -81,7 +81,7 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
 
     if (msg->header.cmd == FORCE)
     {
-        ForceOD_ForceFromMsg(&raw_force, msg);
+        ForceOD_ForceFromMsg((force_t *)&raw_force, msg);
     }
 
     if (msg->header.cmd == CONTROL)
