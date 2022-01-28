@@ -117,7 +117,7 @@ int main(void)
     Luos_Init();
     LedStrip_Init();
     Load_Init();
-    // StepMngr_Init();
+    StepMngr_Init();
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -127,7 +127,7 @@ int main(void)
         Luos_Loop();
         LedStrip_Loop();
         Load_Loop();
-        // StepMngr_Loop();
+        StepMngr_Loop();
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
