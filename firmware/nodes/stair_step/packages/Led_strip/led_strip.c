@@ -37,6 +37,8 @@ void LedStrip_Init(void)
     memset((void *)matrix, 0, MAX_LED_NUMBER * 3);
     // initialize driver
     LedStripDrv_Init();
+    // Init the led strip color
+    LedStripDrv_Write(matrix);
 }
 /******************************************************************************
  * @brief loop must be call in project loop
@@ -46,7 +48,6 @@ void LedStrip_Init(void)
 void LedStrip_Loop(void)
 {
     // write in buffer transfered through dma
-    LedStripDrv_Write(matrix);
 }
 /******************************************************************************
  * @brief Msg Handler call back when a msg receive for this service
@@ -70,7 +71,10 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
         else
         {
             // image management
-            Luos_ReceiveData(service, msg, (void *)matrix);
+            if (Luos_ReceiveData(service, msg, (void *)matrix) == SUCCEED)
+            {
+                LedStripDrv_Write(matrix);
+            }
         }
         return;
     }
@@ -107,5 +111,6 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
                 }
             }
         }
+        LedStripDrv_Write(matrix);
     }
 }
