@@ -158,7 +158,7 @@ void StepMngr_Loop(void)
 void frame_transmit(int8_t *delta_intensity)
 {
 
-    static int8_t frame[STEP_NUMBER][LED_NBR] = {0};
+    static int16_t frame[STEP_NUMBER][LED_NBR] = {0};
     /*
      * To compute a frame we have to :
      * - parse all the leds step by step
@@ -196,8 +196,8 @@ void frame_transmit(int8_t *delta_intensity)
             msg.header.target      = filter_result.result_table[step_index]->id;
             msg.header.target_mode = IDACK;
             msg.header.cmd         = DELTA_COLOR;
-            msg.header.size        = sizeof(frame[step_index]);
-            memcpy(msg.data, delta_frame, sizeof(frame[step_index]));
+            msg.header.size        = sizeof(delta_frame);
+            memcpy(msg.data, delta_frame, sizeof(delta_frame));
             Luos_SendMsg(app, &msg);
         }
     }
