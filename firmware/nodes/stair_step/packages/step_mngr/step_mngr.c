@@ -50,7 +50,7 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
         // We need to control the local sensor if it exists, search if there is a local load sensor
         uint16_t my_nodeid = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(service));
         search_result_t filter_result;
-        RTFilter_Init(&filter_result);
+        RTFilter_Reset(&filter_result);
         RTFilter_Type(&filter_result, LOAD_TYPE);
         RTFilter_Node(&filter_result, my_nodeid);
 
@@ -168,7 +168,7 @@ void frame_transmit(int8_t *delta_intensity)
 
     // Find the step apps by getting a list off all available apps
     search_result_t filter_result;
-    RTFilter_Init(&filter_result);
+    RTFilter_Reset(&filter_result);
     RTFilter_Type(&filter_result, COLOR_TYPE);
 
     // Parse all the steps
