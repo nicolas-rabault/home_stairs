@@ -208,7 +208,7 @@ void compute_slot_map(void)
     /*
      * To compute the slot_map we have to :
      * - parse all the leds step by step
-     * - compute the distance of this led from the wave center
+     * - compute the distance of this led from the local wave center
      * - get the slot on delta_intensity correponding to the distance of this led
      * - save it on the slot_map table
      */
@@ -218,8 +218,24 @@ void compute_slot_map(void)
      * To do that we have to make the first step do the detection to have a deterministic numbers on steps
      * This way the (node_id - 1) represent the step number
      */
-    uint16_t my_nodeid        = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(app));
-    const float wave_center_x = (((STAIR_LENGHT / STEP_NUMBER) * (my_nodeid - 1)));
+    uint16_t my_nodeid = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(app));
+    search_result_t color_list;
+    RTFilter_Reset(&color_list);
+    RTFilter_Type(&color_list, COLOR_TYPE);
+
+    // Find the local one
+    search_result_t local_color = color_list;
+    RTFilter_Node(&local_color, my_nodeid);
+
+    LUOS_ASSERT(local_color.result_nbr > 0);
+    // Now we can define the position of the local one.
+    int my_step_position = 0;
+    while (color_list.result_table[my_step_position]->id != local_color.result_table[0]->id)
+    {
+        my_step_position++;
+    }
+
+    const float wave_center_x = (((STAIR_LENGHT / STEP_NUMBER) * my_step_position));
     const float wave_center_y = STEP_WIDTH / 2.0;
 
     // Parse all the steps
