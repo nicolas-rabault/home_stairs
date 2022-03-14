@@ -8,10 +8,7 @@
         "url": "https://www.linkedin.com/in/nicolas-rabault-/"
     },
     "licence": "MIT",
-    "dependencies": [
-        {
-            "name": "luos/Luos",
-            "version": "^2.0.0"
-        }
-    ]
+    "dependencies": {
+        "luos/luos_engine": "^2.4.0"
+    }
 }

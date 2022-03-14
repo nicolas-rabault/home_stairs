@@ -48,7 +48,7 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
     if (msg->header.cmd == END_DETECTION)
     {
         // We need to control the local sensor if it exists, search if there is a local load sensor
-        uint16_t my_nodeid = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(service));
+        uint16_t my_nodeid = RoutingTB_NodeIDFromID(service->ll_service->id);
         search_result_t filter_result;
         RTFilter_Reset(&filter_result);
         RTFilter_Type(&filter_result, LOAD_TYPE);
@@ -234,7 +234,7 @@ void compute_slot_map(void)
      * To do that we have to make the first step do the detection to have a deterministic numbers on steps
      * This way the (node_id - 1) represent the step number
      */
-    uint16_t my_nodeid = RoutingTB_NodeIDFromID(RoutingTB_IDFromService(app));
+    uint16_t my_nodeid = RoutingTB_NodeIDFromID(app->ll_service->id);
     search_result_t color_list;
     RTFilter_Reset(&color_list);
     RTFilter_Type(&color_list, COLOR_TYPE);

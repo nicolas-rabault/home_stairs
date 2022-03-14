@@ -27,7 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "luos.h"
+#include "luos_engine.h"
 #include "led_strip.h"
 #include "load.h"
 #include "step_mngr.h"
