@@ -66,12 +66,14 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
             time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
             TimeOD_TimeToMsg(&time, &send_msg);
             send_msg.header.cmd = UPDATE_PUB;
-            Luos_SendMsg(service, &send_msg);
+            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                ;
 
             // Tare the sensor
             send_msg.header.size = 0;
             send_msg.header.cmd  = REINIT;
-            Luos_SendMsg(service, &send_msg);
+            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                ;
 
             // Scale the sensor
         }
@@ -89,7 +91,8 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
             send_msg.data[0]            = 0;
             send_msg.data[1]            = 0;
             send_msg.data[2]            = 0;
-            Luos_SendMsg(service, &send_msg);
+            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                ;
         }
         // To finish we have to compute the new slot_map
         compute_slot_map();
@@ -214,7 +217,8 @@ void frame_transmit(int8_t *delta_intensity)
             msg.header.cmd         = DELTA_COLOR;
             msg.header.size        = sizeof(delta_frame);
             memcpy(msg.data, delta_frame, sizeof(delta_frame));
-            Luos_SendMsg(app, &msg);
+            while (Luos_SendMsg(app, &msg) != SUCCEED)
+                ;
         }
     }
 }
