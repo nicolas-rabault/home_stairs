@@ -65,8 +65,9 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
             // there is only one color copy it in the entire matrix
             for (int i = 0; i < imgsize; i++)
             {
-                memcpy((void *)matrix + i, msg->data, sizeof(color_t));
+                memcpy((void *)&matrix[i], msg->data, sizeof(color_t));
             }
+            LedStripDrv_Write(matrix);
         }
         else
         {
