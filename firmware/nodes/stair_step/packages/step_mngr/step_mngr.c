@@ -148,7 +148,7 @@ void StepMngr_Loop(void)
          * Then we have to move the values from our position to the end of the table
          */
         // Move values from 0 to the table end
-        for (int i = ANIM_SIZE; i > 0; i--)
+        for (int i = ANIM_SIZE - 1; i > 0; i--)
         {
             delta_intensity[i] = delta_intensity[i - 1];
         }
