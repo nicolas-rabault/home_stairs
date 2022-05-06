@@ -185,8 +185,8 @@ void StepMngr_Loop(void)
 
 void frame_transmit(uint8_t *light_intensity)
 {
-
-    static int16_t frame[STEP_NUMBER][LED_NBR] = {0};
+    // Real led light intensity value
+    static uint8_t frame[STEP_NUMBER][LED_NBR] = {0};
     /*
      * To compute a frame we have to :
      * - parse all the leds step by step
