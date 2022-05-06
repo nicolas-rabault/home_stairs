@@ -96,7 +96,7 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
         LUOS_ASSERT(msg->header.size <= MAX_LED_NUMBER);
         for (int i = 0; i < msg->header.size; i++)
         {
-            if ((int8_t)msg->data[i] != 0)
+            if (((int8_t)msg->data[i] != 0) && (((int)matrix[i].b + (int8_t)msg->data[i]) <= 255))
             {
                 if (((int)matrix[i].b + (int8_t)msg->data[i]) >= 0)
                 {
@@ -106,9 +106,9 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
                 }
                 else // offset to zero
                 {
-                    matrix[i].b += 0;
-                    matrix[i].g += 0;
-                    matrix[i].r += 0;
+                    matrix[i].b = 0;
+                    matrix[i].g = 0;
+                    matrix[i].r = 0;
                 }
             }
         }
