@@ -33,12 +33,14 @@ service_t *app;
 volatile control_t control_app;
 volatile force_t raw_force;
 
+// A representation of all the leds distance from the sensor of this step.
+// In this table we will save the ID of the delta_intentisty table.
 uint16_t slot_map[STEP_NUMBER][LED_NBR] = {0};
 
 /*******************************************************************************
  * Function
  ******************************************************************************/
-static void frame_transmit(int8_t *delta_intensity);
+static void frame_transmit(uint8_t *light_intensity);
 void compute_slot_map(void);
 
 static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
@@ -135,29 +137,36 @@ void StepMngr_Loop(void)
      * This table represent the wave intensity per distance with a DIST_RES granularity with
      * a max distance of STAIR_LENGHT.
      */
-    static int8_t delta_intensity[ANIM_SIZE] = {0};
-    static uint32_t last_animation_date      = 0;
-    static uint32_t last_frame_date          = 0;
+    static uint8_t light_intensity[ANIM_SIZE] = {0};
+    static uint32_t last_animation_date       = 0;
+    static uint32_t last_frame_date           = 0;
     static force_t force;
 
     // Check Animation timing : time = distance/speed
     if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))))
     {
         /*
-         * We have to insert weight values at slot 0.
+         * We have to insert weight values at light_intensity slot 0.
          * Then we have to move the values from our position to the end of the table
          */
         // Move values from 0 to the table end
         for (int i = ANIM_SIZE - 1; i > 0; i--)
         {
-            delta_intensity[i] = delta_intensity[i - 1];
+            light_intensity[i] = light_intensity[i - 1];
         }
         // Low pass filtering on the sensor value
         force = force + ((raw_force - force) * FILTER_STENGTH);
         // Then compute the new delta intensity and insert it into the animation table
-        delta_intensity[0] = force * FORCE_LIGHT_SCALING;
-        if (delta_intensity[0] < 0)
-            delta_intensity[0] = 0;
+        float value = force * FORCE_LIGHT_SCALING;
+        LUOS_ASSERT(value <= 255.0f);
+        if ((force * FORCE_LIGHT_SCALING) < 1.0f)
+        {
+            light_intensity[0] = 0;
+        }
+        else
+        {
+            light_intensity[0] = (uint8_t)value;
+        }
         last_animation_date = Luos_GetSystick();
     }
 
@@ -166,15 +175,15 @@ void StepMngr_Loop(void)
     {
         /*
          * We have to compute a frame
-         * Frames are computed from the delta_intensity table
-         * The idea is to send the delta_intensity information to the leds corresponding to the distance.
+         * Frames are computed from the light_intensity table
+         * The idea is to send the light_intensity information to the leds corresponding to the distance.
          */
-        frame_transmit(delta_intensity);
+        frame_transmit(light_intensity);
         last_frame_date = Luos_GetSystick();
     }
 }
 
-void frame_transmit(int8_t *delta_intensity)
+void frame_transmit(uint8_t *light_intensity)
 {
 
     static int16_t frame[STEP_NUMBER][LED_NBR] = {0};
@@ -193,14 +202,16 @@ void frame_transmit(int8_t *delta_intensity)
     // Parse all the steps
     for (int step_index = 0; step_index < filter_result.result_nbr; step_index++) // Step
     {
+        // Delta light intensity
         int8_t delta_frame[LED_NBR] = {0};
         // Parse all the led fo each steps
         bool send_it = false;
         for (int led_index = 0; led_index < LED_NBR; led_index++) // Led
         {
             // Compute the delta intensity of this led
-            delta_frame[led_index]       = delta_intensity[slot_map[step_index][led_index]] - frame[step_index][led_index];
-            frame[step_index][led_index] = delta_intensity[slot_map[step_index][led_index]];
+            LUOS_ASSERT(abs((int)light_intensity[slot_map[step_index][led_index]] - (int)frame[step_index][led_index]) <= 128);
+            delta_frame[led_index]       = (int)light_intensity[slot_map[step_index][led_index]] - (int)frame[step_index][led_index];
+            frame[step_index][led_index] = light_intensity[slot_map[step_index][led_index]];
             if (delta_frame[led_index] != 0)
             {
                 // We will have to send a message for this step
@@ -229,7 +240,7 @@ void compute_slot_map(void)
      * To compute the slot_map we have to :
      * - parse all the leds step by step
      * - compute the distance of this led from the local wave center
-     * - get the slot on delta_intensity correponding to the distance of this led
+     * - get the slot on light_intensity correponding to the distance of this led
      * - save it on the slot_map table
      */
 
@@ -270,7 +281,7 @@ void compute_slot_map(void)
             const float y = led_index * SPACE_BETWEEN_LED - wave_center_y;
             // Compute the distance of this led from the wave source
             double distance = sqrt(((x) * (x)) + ((y) * (y)));
-            // Depending on this distance define the corresponding slot on delta_intensity and save this slot in the slot_map
+            // Depending on this distance define the corresponding slot on light_intensity and save this slot in the slot_map
             slot_map[step_index][led_index] = (uint16_t)(distance / DIST_RES);
         }
     }
