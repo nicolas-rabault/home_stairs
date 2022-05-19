@@ -6,8 +6,9 @@
  ******************************************************************************/
 #include "step_mngr.h"
 #include "product_config.h"
-#include <math.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 
 /*******************************************************************************
  * Definitions
@@ -159,7 +160,7 @@ void StepMngr_Loop(void)
         // Then compute the new delta intensity and insert it into the animation table
         float value = force * FORCE_LIGHT_SCALING;
         LUOS_ASSERT(value <= 255.0f);
-        if ((force * FORCE_LIGHT_SCALING) < 1.0f)
+        if ((value) < 1.0f)
         {
             light_intensity[0] = 0;
         }
