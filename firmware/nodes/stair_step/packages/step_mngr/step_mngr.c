@@ -18,7 +18,7 @@
 #define STAIR_LENGHT        2.2                                 // Stairs length meters
 #define STEP_NUMBER         11                                  // Number of step on the stairs
 #define STEP_WIDTH          0.69                                // Width of a step in meter
-#define WAVE_SPEED          1                                   // Propagation speed of the waves meter/seconds
+#define WAVE_SPEED          3                                   // Propagation speed of the waves meter/seconds
 #define FRAME_RATE_MS       10                                  // Frame rate calculation
 #define FORCE_LIGHT_SCALING 0.0001                              // Scale factor between force value and light intensity
 #define LED_NBR             39                                  // Number of led per step
