@@ -130,7 +130,7 @@ void StepMngr_Init(void)
 #ifdef DETECTOR
     while (Luos_GetSystick() < 100)
         ;
-    RoutingTB_DetectServices(app);
+    Luos_Detect(app);
 #endif
 }
 
