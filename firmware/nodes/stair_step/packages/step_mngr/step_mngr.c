@@ -13,26 +13,28 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define UPDATE_PERIOD_MS    20                                  // Sensor update period
-#define FILTER_STENGTH      0.1                                 // Filtering strength of the sensor
-#define STAIR_LENGHT        2.2                                 // Stairs length meters
-#define STEP_NUMBER         11                                  // Number of step on the stairs
-#define STEP_WIDTH          0.69                                // Width of a step in meter
-#define WAVE_SPEED          3                                   // Propagation speed of the waves meter/seconds
-#define FRAME_RATE_MS       10                                  // Frame rate calculation
-#define FORCE_LIGHT_SCALING 0.0001                              // Scale factor between force value and light intensity
-#define LED_NBR             39                                  // Number of led per step
-#define LIGHT_TRESHOLD      0                                   // The minimal weight needed to trigger a wave
-#define SPACE_BETWEEN_LED   (STEP_WIDTH / LED_NBR)              // Space between leds
-#define ANIMATION_SMOOTH    4                                   // animation smothness should be %2
-#define DIST_RES            SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
-#define ANIM_SIZE           125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
+#define UPDATE_PERIOD_MS         20                                  // Sensor update period
+#define FILTER_STENGTH           0.1                                 // Filtering strength of the sensor
+#define STAIR_LENGHT             2.2                                 // Stairs length meters
+#define STEP_NUMBER              11                                  // Number of step on the stairs
+#define STEP_WIDTH               0.69                                // Width of a step in meter
+#define WAVE_SPEED               3                                   // Propagation speed of the waves meter/seconds
+#define FRAME_RATE_MS            10                                  // Frame rate calculation
+#define BASE_FORCE_LIGHT_SCALING 0.001                               // Base scale factor between force value and light intensity
+#define MAX_LIGHT_VALUE          100                                 // This max value will be used to auto-scale the FORCE_LIGHT_SCALING
+#define LED_NBR                  39                                  // Number of led per step
+#define LIGHT_TRESHOLD           0                                   // The minimal weight needed to trigger a wave
+#define SPACE_BETWEEN_LED        (STEP_WIDTH / LED_NBR)              // Space between leds
+#define ANIMATION_SMOOTH         4                                   // animation smothness should be %2
+#define DIST_RES                 SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
+#define ANIM_SIZE                125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
 /*******************************************************************************
  * Variables
  ******************************************************************************/
 service_t *app;
 volatile control_t control_app;
 volatile force_t raw_force;
+float force_light_scaling = BASE_FORCE_LIGHT_SCALING;
 
 // A representation of all the leds distance from the sensor of this step.
 // In this table we will save the ID of the delta_intentisty table.
@@ -158,7 +160,13 @@ void StepMngr_Loop(void)
         // Low pass filtering on the sensor value
         force = force + ((raw_force - force) * FILTER_STENGTH);
         // Then compute the new delta intensity and insert it into the animation table
-        float value = force * FORCE_LIGHT_SCALING;
+        float value = force * force_light_scaling;
+        // Auto-scale the light intensity
+        if (value > MAX_LIGHT_VALUE)
+        {
+            value               = MAX_LIGHT_VALUE;
+            force_light_scaling = MAX_LIGHT_VALUE / force;
+        }
         LUOS_ASSERT(value <= 255.0f);
         if ((value) < 1.0f)
         {
