@@ -8,6 +8,8 @@
 #include "led_strip_drv.h"
 #include "product_config.h"
 
+#define BUG_HIDE
+
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -17,6 +19,11 @@
  ******************************************************************************/
 color_t matrix[MAX_LED_NUMBER];
 int imgsize = MAX_LED_NUMBER;
+
+#ifdef BUG_HIDE
+uint32_t last_delta_color_date = 0;
+bool set_to_zero_need          = false;
+#endif
 
 /*******************************************************************************
  * Function
@@ -47,7 +54,18 @@ void LedStrip_Init(void)
  ******************************************************************************/
 void LedStrip_Loop(void)
 {
-    // write in buffer transfered through dma
+#ifdef BUG_HIDE
+    // Check if we need to set the color to 0 to hide the bug
+    if (set_to_zero_need == true)
+    {
+        if (LuosHAL_GetSystick() - last_delta_color_date > 100)
+        {
+            set_to_zero_need = false;
+            memset((void *)matrix, 0, MAX_LED_NUMBER * 3);
+            LedStripDrv_Write(matrix);
+        }
+    }
+#endif
 }
 /******************************************************************************
  * @brief Msg Handler call back when a msg receive for this service
@@ -122,5 +140,9 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
             }
         }
         LedStripDrv_Write(matrix);
+#ifdef BUG_HIDE
+        last_delta_color_date = LuosHAL_GetSystick();
+        set_to_zero_need      = true;
+#endif
     }
 }
