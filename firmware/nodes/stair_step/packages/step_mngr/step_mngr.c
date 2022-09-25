@@ -33,8 +33,8 @@
  ******************************************************************************/
 service_t *app;
 volatile control_t control_app;
-volatile force_t raw_force;
-float force_light_scaling = BASE_FORCE_LIGHT_SCALING;
+volatile force_t raw_force = 0.0;
+float force_light_scaling  = BASE_FORCE_LIGHT_SCALING;
 
 // A representation of all the leds distance from the sensor of this step.
 // In this table we will save the ID of the delta_intentisty table.
@@ -143,7 +143,7 @@ void StepMngr_Loop(void)
     static uint8_t light_intensity[ANIM_SIZE] = {0};
     static uint32_t last_animation_date       = 0;
     static uint32_t last_frame_date           = 0;
-    static force_t force;
+    static force_t force                      = 0.0;
 
     // Check Animation timing : time = distance/speed
     if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))))
