@@ -58,7 +58,7 @@ void LedStrip_Loop(void)
     // Check if we need to set the color to 0 to hide the bug
     if (set_to_zero_need == true)
     {
-        if (LuosHAL_GetSystick() - last_delta_color_date > 100)
+        if ((LuosHAL_GetSystick() - last_delta_color_date) > 3000)
         {
             set_to_zero_need = false;
             memset((void *)matrix, 0, MAX_LED_NUMBER * 3);

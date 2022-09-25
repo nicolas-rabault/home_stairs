@@ -128,7 +128,7 @@ void StepMngr_Init(void)
     // Create App
     app = Luos_CreateService(StepMngr_MsgHandler, STEP_APP, "step", revision);
 #ifdef DETECTOR
-    while (Luos_GetSystick() < 100)
+    while (Luos_GetSystick() < 1000)
         ;
     Luos_Detect(app);
 #endif
