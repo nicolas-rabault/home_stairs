@@ -143,7 +143,11 @@ void StepMngr_Loop(void)
     static uint8_t light_intensity[ANIM_SIZE] = {0};
     static uint32_t last_animation_date       = 0;
     static uint32_t last_frame_date           = 0;
-    static force_t force                      = 0.0;
+#ifdef DETECTOR
+    static force_t force = 40000.0;
+#else
+    static force_t force = 0.0;
+#endif
 
     // Check Animation timing : time = distance/speed
     if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))))
