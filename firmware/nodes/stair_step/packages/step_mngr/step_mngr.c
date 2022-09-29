@@ -36,6 +36,10 @@ volatile control_t control_app;
 volatile force_t raw_force = 0.0;
 float force_light_scaling  = BASE_FORCE_LIGHT_SCALING;
 
+#ifdef DETECTOR
+uint32_t boot_time = 0;
+#endif
+
 // A representation of all the leds distance from the sensor of this step.
 // In this table we will save the ID of the delta_intentisty table.
 uint16_t slot_map[STEP_NUMBER][LED_NBR] = {0};
@@ -130,15 +134,22 @@ void StepMngr_Init(void)
     control_app.flux = PLAY;
     // Create App
     app = Luos_CreateService(StepMngr_MsgHandler, STEP_APP, "step", revision);
+
 #ifdef DETECTOR
-    while (Luos_GetSystick() < 1000)
-        ;
-    Luos_Detect(app);
+    boot_time = Luos_GetSystick();
 #endif
 }
 
 void StepMngr_Loop(void)
 {
+#ifdef DETECTOR
+    static bool detection_done = false;
+    if (((Luos_GetSystick() - boot_time) > 1000) & !detection_done)
+    {
+        Luos_Detect(app);
+        detection_done = true;
+    }
+#endif
     /*
      * This table represent the wave intensity per distance with a DIST_RES granularity with
      * a max distance of STAIR_LENGHT.
