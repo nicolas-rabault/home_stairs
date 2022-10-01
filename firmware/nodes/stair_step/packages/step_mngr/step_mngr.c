@@ -71,6 +71,7 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
                 msg_t send_msg;
                 send_msg.header.target      = filter_result.result_table[0]->id;
                 send_msg.header.target_mode = IDACK;
+
                 // Setup auto update each UPDATE_PERIOD_MS on load
                 // This value is resetted on all service at each detection
                 // It's important to setting it each time.
@@ -81,12 +82,12 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
                     ;
 
                 // Tare the sensor
-                send_msg.header.size = 0;
-                send_msg.header.cmd  = REINIT;
-                while (Luos_SendMsg(service, &send_msg) != SUCCEED)
-                    ;
+                // send_msg.header.size = 0;
+                // send_msg.header.cmd  = REINIT;
+                // while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                //     ;
 
-                // Scale the sensor
+                // Scale the sensor?
             }
             RTFilter_Reset(&filter_result);
             RTFilter_Type(&filter_result, COLOR_TYPE);
