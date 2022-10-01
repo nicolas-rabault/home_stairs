@@ -58,7 +58,7 @@ void LedStrip_Loop(void)
     // Check if we need to set the color to 0 to hide the bug
     if (set_to_zero_need == true)
     {
-        if ((LuosHAL_GetSystick() - last_delta_color_date) > 3000)
+        if ((Luos_GetSystick() - last_delta_color_date) > 3000)
         {
             set_to_zero_need = false;
             memset((void *)matrix, 0, MAX_LED_NUMBER * 3);
@@ -141,7 +141,7 @@ static void LedStrip_MsgHandler(service_t *service, msg_t *msg)
         }
         LedStripDrv_Write(matrix);
 #ifdef BUG_HIDE
-        last_delta_color_date = LuosHAL_GetSystick();
+        last_delta_color_date = Luos_GetSystick();
         set_to_zero_need      = true;
 #endif
     }
