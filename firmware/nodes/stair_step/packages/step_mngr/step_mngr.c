@@ -52,55 +52,58 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
     // We receive an end_detection, we need to initialize the sensor service to auto-update
     if (msg->header.cmd == END_DETECTION)
     {
-        // We need to control the local sensor if it exists, search if there is a local load sensor
-        uint16_t my_nodeid = RoutingTB_NodeIDFromID(service->ll_service->id);
-        search_result_t filter_result;
-        RTFilter_Reset(&filter_result);
-        RTFilter_Type(&filter_result, LOAD_TYPE);
-        RTFilter_Node(&filter_result, my_nodeid);
-
-        if (filter_result.result_nbr == 1)
+        if (Luos_IsNodeDetected())
         {
-            // Auto-update - ask to send its value each UPDATE_PERIOD_MS
-            msg_t send_msg;
-            send_msg.header.target      = filter_result.result_table[0]->id;
-            send_msg.header.target_mode = IDACK;
-            // Setup auto update each UPDATE_PERIOD_MS on load
-            // This value is resetted on all service at each detection
-            // It's important to setting it each time.
-            time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
-            TimeOD_TimeToMsg(&time, &send_msg);
-            send_msg.header.cmd = UPDATE_PUB;
-            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
-                ;
+            // We need to control the local sensor if it exists, search if there is a local load sensor
+            uint16_t my_nodeid = RoutingTB_NodeIDFromID(service->ll_service->id);
+            search_result_t filter_result;
+            RTFilter_Reset(&filter_result);
+            RTFilter_Type(&filter_result, LOAD_TYPE);
+            RTFilter_Node(&filter_result, my_nodeid);
 
-            // Tare the sensor
-            send_msg.header.size = 0;
-            send_msg.header.cmd  = REINIT;
-            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
-                ;
+            if (filter_result.result_nbr == 1)
+            {
+                // Auto-update - ask to send its value each UPDATE_PERIOD_MS
+                msg_t send_msg;
+                send_msg.header.target      = filter_result.result_table[0]->id;
+                send_msg.header.target_mode = IDACK;
+                // Setup auto update each UPDATE_PERIOD_MS on load
+                // This value is resetted on all service at each detection
+                // It's important to setting it each time.
+                time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
+                TimeOD_TimeToMsg(&time, &send_msg);
+                send_msg.header.cmd = UPDATE_PUB;
+                while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                    ;
 
-            // Scale the sensor
+                // Tare the sensor
+                send_msg.header.size = 0;
+                send_msg.header.cmd  = REINIT;
+                while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                    ;
+
+                // Scale the sensor
+            }
+            RTFilter_Reset(&filter_result);
+            RTFilter_Type(&filter_result, COLOR_TYPE);
+            RTFilter_Node(&filter_result, my_nodeid);
+            if (filter_result.result_nbr == 1)
+            {
+                // Turn of my local led strip
+                msg_t send_msg;
+                send_msg.header.target      = filter_result.result_table[0]->id;
+                send_msg.header.target_mode = IDACK;
+                send_msg.header.size        = 3;
+                send_msg.header.cmd         = COLOR;
+                send_msg.data[0]            = 0;
+                send_msg.data[1]            = 0;
+                send_msg.data[2]            = 0;
+                while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                    ;
+            }
+            // To finish we have to compute the new slot_map
+            compute_slot_map();
         }
-        RTFilter_Reset(&filter_result);
-        RTFilter_Type(&filter_result, COLOR_TYPE);
-        RTFilter_Node(&filter_result, my_nodeid);
-        if (filter_result.result_nbr == 1)
-        {
-            // Turn of my local led strip
-            msg_t send_msg;
-            send_msg.header.target      = filter_result.result_table[0]->id;
-            send_msg.header.target_mode = IDACK;
-            send_msg.header.size        = 3;
-            send_msg.header.cmd         = COLOR;
-            send_msg.data[0]            = 0;
-            send_msg.data[1]            = 0;
-            send_msg.data[2]            = 0;
-            while (Luos_SendMsg(service, &send_msg) != SUCCEED)
-                ;
-        }
-        // To finish we have to compute the new slot_map
-        compute_slot_map();
     }
 
     if (msg->header.cmd == FORCE)
