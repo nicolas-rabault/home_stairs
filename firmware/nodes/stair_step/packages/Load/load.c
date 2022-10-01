@@ -35,6 +35,8 @@ void Load_Init(void)
 
     hx711_Init();
     Luos_CreateService(Load_MsgHandler, LOAD_TYPE, "load", revision);
+
+    hx711_tare(DEFAULT_TARE_TIME);
 }
 /******************************************************************************
  * @brief loop must be call in project loop
