@@ -35,9 +35,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#ifdef BOOTLOADER_MODE
-#define RSVD_SECTION ".rsvd.data,\"aw\",%nobits//"
-#define _RSVD        __attribute__((used, section(RSVD_SECTION)))
+#ifdef WITH_BOOTLOADER
+    #define RSVD_SECTION ".rsvd.data,\"aw\",%nobits//"
+    #define _RSVD        __attribute__((used, section(RSVD_SECTION)))
 
 static volatile _RSVD uint32_t VectorTable[48];
 #endif
