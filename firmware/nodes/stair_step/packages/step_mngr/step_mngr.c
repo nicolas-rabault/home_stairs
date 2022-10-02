@@ -201,7 +201,7 @@ void StepMngr_Loop(void)
     static uint32_t last_frame_date           = 0;
     static int8_t sensor_dir                  = 1;
 #ifdef DETECTOR
-    static force_t force = 40000.0;
+    static force_t force = (MAX_LIGHT_VALUE - OFFSET) / BASE_FORCE_LIGHT_SCALING;
 #else
     static force_t force = 0.0;
 #endif
