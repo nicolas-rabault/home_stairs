@@ -28,6 +28,7 @@
 #define ANIMATION_SMOOTH         4                                   // animation smothness should be %2
 #define DIST_RES                 SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
 #define ANIM_SIZE                125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
+#define OFFSET                   1000                                // On the equation ax+b to compute light intensity, this is the b value. This offset should be bigger than the noise of the sensor.
 /*******************************************************************************
  * Variables
  ******************************************************************************/
@@ -174,7 +175,7 @@ void StepMngr_Loop(void)
         // Set sensor direction
         force = force * sensor_dir;
         // Then compute the new delta intensity and insert it into the animation table
-        float value = force * force_light_scaling;
+        float value = (force * force_light_scaling) + OFFSET;
         // Auto-scale the light intensity
         if (abs(value) > MAX_LIGHT_VALUE)
         {
