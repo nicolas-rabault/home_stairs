@@ -80,14 +80,6 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
                 send_msg.header.cmd = UPDATE_PUB;
                 while (Luos_SendMsg(service, &send_msg) != SUCCEED)
                     ;
-
-                // Tare the sensor
-                // send_msg.header.size = 0;
-                // send_msg.header.cmd  = REINIT;
-                // while (Luos_SendMsg(service, &send_msg) != SUCCEED)
-                //     ;
-
-                // Scale the sensor?
             }
             RTFilter_Reset(&filter_result);
             RTFilter_Type(&filter_result, COLOR_TYPE);
