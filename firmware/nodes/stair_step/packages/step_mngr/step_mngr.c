@@ -34,8 +34,10 @@
  ******************************************************************************/
 service_t *app;
 volatile control_t control_app;
-volatile force_t raw_force = 0.0;
-float force_light_scaling  = BASE_FORCE_LIGHT_SCALING;
+volatile force_t raw_force         = 0.0;
+float force_light_scaling          = BASE_FORCE_LIGHT_SCALING;
+volatile illuminance_t light_force = 0.0;
+volatile force_t filtered_force    = 0.0;
 
 #ifdef DETECTOR
 uint32_t boot_time = 0;
@@ -53,10 +55,11 @@ void compute_slot_map(void);
 
 static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
 {
-
+    static bool gate_feedback = false;
     // We receive an end_detection, we need to initialize the sensor service to auto-update
     if (msg->header.cmd == END_DETECTION)
     {
+        gate_feedback = false;
         if (Luos_IsNodeDetected())
         {
             // We need to control the local sensor if it exists, search if there is a local load sensor
@@ -112,6 +115,51 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
     if (msg->header.cmd == CONTROL)
     {
         control_app.unmap = msg->data[0];
+        return;
+    }
+
+    if (msg->header.cmd == GET_CMD)
+    {
+        if (gate_feedback == false)
+        {
+            // We have to setup things for the gate.
+            gate_feedback = true;
+            if (Luos_IsNodeDetected())
+            {
+                // We need to control the local sensor if it exists, search if there is a local load sensor
+                uint16_t my_nodeid = RoutingTB_NodeIDFromID(service->ll_service->id);
+                search_result_t filter_result;
+                RTFilter_Reset(&filter_result);
+                RTFilter_Type(&filter_result, LOAD_TYPE);
+                RTFilter_Node(&filter_result, my_nodeid);
+
+                if (filter_result.result_nbr == 1)
+                {
+                    // Auto-update - ask to send its value each UPDATE_PERIOD_MS
+                    msg_t send_msg;
+                    send_msg.header.target      = filter_result.result_table[0]->id;
+                    send_msg.header.target_mode = IDACK;
+
+                    // Setup auto update each UPDATE_PERIOD_MS on load
+                    // This value is resetted on all service at each detection
+                    // It's important to setting it each time.
+                    time_luos_t time = TimeOD_TimeFrom_ms(UPDATE_PERIOD_MS);
+                    TimeOD_TimeToMsg(&time, &send_msg);
+                    send_msg.header.cmd = UPDATE_PUB;
+                    while (Luos_SendMsg(service, &send_msg) != SUCCEED)
+                        ;
+                }
+            }
+        }
+        msg_t pub_msg;
+        // fill the message infos
+        pub_msg.header.target_mode = ID;
+        pub_msg.header.target      = msg->header.source;
+        IlluminanceOD_IlluminanceToMsg((illuminance_t *)&light_force, &pub_msg);
+        Luos_SendMsg(service, &pub_msg);
+
+        ForceOD_ForceToMsg((force_t *)&filtered_force, &pub_msg);
+        Luos_SendMsg(service, &pub_msg);
         return;
     }
 }
@@ -171,7 +219,8 @@ void StepMngr_Loop(void)
             light_intensity[i] = light_intensity[i - 1];
         }
         // Low pass filtering on the sensor value
-        force = force + ((raw_force - force) * FILTER_STENGTH);
+        force          = force + ((raw_force - force) * FILTER_STENGTH);
+        filtered_force = force;
         // Set sensor direction
         force = force * sensor_dir;
         // Then compute the new delta intensity and insert it into the animation table
@@ -195,6 +244,7 @@ void StepMngr_Loop(void)
         {
             light_intensity[0] = (uint8_t)value;
         }
+        light_force         = light_intensity[0];
         last_animation_date = Luos_GetSystick();
     }
 
