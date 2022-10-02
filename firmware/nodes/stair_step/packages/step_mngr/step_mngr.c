@@ -198,7 +198,7 @@ void StepMngr_Loop(void)
     }
 
     // Check Frame timing
-    if ((Luos_GetSystick() - last_frame_date >= FRAME_RATE_MS))
+    if ((Luos_GetSystick() - last_frame_date >= FRAME_RATE_MS) & (control_app.flux == PLAY))
     {
         /*
          * We have to compute a frame
