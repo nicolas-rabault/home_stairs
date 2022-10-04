@@ -235,6 +235,8 @@ void StepMngr_Loop(void)
         if ((value) < 1.0f)
         {
             light_intensity[0] = 0;
+            // Reset the gain allowing to maximize the light intensity for any new usage
+            force_light_scaling = INITIAL_GAIN;
         }
         else
         {
