@@ -199,7 +199,6 @@ void StepMngr_Loop(void)
     static uint8_t light_intensity[ANIM_SIZE] = {0};
     static uint32_t last_animation_date       = 0;
     static uint32_t last_frame_date           = 0;
-    static int8_t sensor_dir                  = 1;
 #ifdef DETECTOR
     static force_t force = (MAX_LIGHT_VALUE - OFFSET) / INITIAL_GAIN;
 #else
@@ -219,19 +218,16 @@ void StepMngr_Loop(void)
             light_intensity[i] = light_intensity[i - 1];
         }
         // Low pass filtering on the sensor value
-        force          = force + ((raw_force - force) * FILTER_STENGTH);
+        force = force + ((raw_force - force) * FILTER_STENGTH);
+        // Consider absolute values allowing to deal with any direction of the sensor and offset it to remove noise area.
+        force = (float)(fabs((double)force) - OFFSET);
+        // Save the value allowing to send it back to a Gate
         filtered_force = force;
-        // Set sensor direction
-        force = force * sensor_dir;
-        // Then compute the new delta intensity and insert it into the animation table
-        float value = (force * force_light_scaling) + OFFSET;
-        // Auto-scale the light intensity
-        if (abs(value) > MAX_LIGHT_VALUE)
+        // Then compute the new intensity and insert it into the animation table
+        float value = force * force_light_scaling;
+        // Auto-scale the light intensity clamped to max value
+        if (value > MAX_LIGHT_VALUE)
         {
-            if (value < 0)
-            {
-                sensor_dir = sensor_dir * -1;
-            }
             value               = MAX_LIGHT_VALUE;
             force_light_scaling = MAX_LIGHT_VALUE / force;
         }
