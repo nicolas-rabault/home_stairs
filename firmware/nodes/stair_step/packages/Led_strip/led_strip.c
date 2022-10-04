@@ -23,6 +23,8 @@ int imgsize = MAX_LED_NUMBER;
 #ifdef BUG_HIDE
 uint32_t last_delta_color_date = 0;
 bool set_to_zero_need          = false;
+    #define TIME_BEFORE_BUG_HIDE 300
+    #define BUG_FADE_TIME_MS     50
 #endif
 
 /*******************************************************************************
@@ -58,11 +60,26 @@ void LedStrip_Loop(void)
     // Check if we need to set the color to 0 to hide the bug
     if (set_to_zero_need == true)
     {
-        if ((Luos_GetSystick() - last_delta_color_date) > 3000)
+        if ((Luos_GetSystick() - last_delta_color_date) > TIME_BEFORE_BUG_HIDE)
         {
-            set_to_zero_need = false;
+            bool fade_end = true;
+            for (int i = 0; i < imgsize; i++)
+            {
+                if (matrix[i].r > 0)
+                {
+                    fade_end = false;
+                    matrix[i].r -= 1;
+                    matrix[i].g -= 1;
+                    matrix[i].b -= 1;
+                }
+            }
+            if (fade_end == true)
+            {
+                set_to_zero_need = false;
+            }
             memset((void *)matrix, 0, MAX_LED_NUMBER * 3);
             LedStripDrv_Write(matrix);
+            last_delta_color_date += BUG_FADE_TIME_MS;
         }
     }
 #endif
