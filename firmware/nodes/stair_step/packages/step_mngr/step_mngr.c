@@ -13,29 +13,29 @@
 /*******************************************************************************
  * Definitions
  ******************************************************************************/
-#define UPDATE_PERIOD_MS         20                                  // Sensor update period
-#define FILTER_STENGTH           0.1                                 // Filtering strength of the sensor
-#define STAIR_LENGHT             2.2                                 // Stairs length meters
-#define STEP_NUMBER              11                                  // Number of step on the stairs
-#define STEP_WIDTH               0.69                                // Width of a step in meter
-#define WAVE_SPEED               3                                   // Propagation speed of the waves meter/seconds
-#define FRAME_RATE_MS            10                                  // Frame rate calculation
-#define BASE_FORCE_LIGHT_SCALING 0.001                               // Base scale factor between force value and light intensity
-#define MAX_LIGHT_VALUE          100                                 // This max value will be used to auto-scale the FORCE_LIGHT_SCALING
-#define LED_NBR                  39                                  // Number of led per step
-#define LIGHT_TRESHOLD           0                                   // The minimal weight needed to trigger a wave
-#define SPACE_BETWEEN_LED        (STEP_WIDTH / LED_NBR)              // Space between leds
-#define ANIMATION_SMOOTH         4                                   // animation smothness should be %2
-#define DIST_RES                 SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
-#define ANIM_SIZE                125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
-#define OFFSET                   -1000                               // On the equation ax+b to compute light intensity, this is the b value. This offset should be bigger than the noise of the sensor.
+#define UPDATE_PERIOD_MS  20                                  // Sensor update period
+#define FILTER_STENGTH    0.1                                 // Filtering strength of the sensor
+#define STAIR_LENGHT      2.2                                 // Stairs length meters
+#define STEP_NUMBER       11                                  // Number of step on the stairs
+#define STEP_WIDTH        0.69                                // Width of a step in meter
+#define WAVE_SPEED        3                                   // Propagation speed of the waves meter/seconds
+#define FRAME_RATE_MS     10                                  // Frame rate calculation
+#define INITIAL_GAIN      0.1                                 // Base gain between force value and light intensity
+#define OFFSET            1500                                // This offset should be bigger than the filtered noise of the sensor.
+#define MAX_LIGHT_VALUE   100                                 // This max value will be used to auto-scale the FORCE_LIGHT_SCALING
+#define LED_NBR           39                                  // Number of led per step
+#define LIGHT_TRESHOLD    0                                   // The minimal weight needed to trigger a wave
+#define SPACE_BETWEEN_LED (STEP_WIDTH / LED_NBR)              // Space between leds
+#define ANIMATION_SMOOTH  4                                   // animation smothness should be %2
+#define DIST_RES          SPACE_BETWEEN_LED *ANIMATION_SMOOTH // Animation resolution meters
+#define ANIM_SIZE         125 * ANIMATION_SMOOTH              // Size of the animation table. I have to calculate it myself, don't know why((const int)(STAIR_LENGHT / SPACE_BETWEEN_LED))
 /*******************************************************************************
  * Variables
  ******************************************************************************/
 service_t *app;
 volatile control_t control_app;
 volatile force_t raw_force         = 0.0;
-float force_light_scaling          = BASE_FORCE_LIGHT_SCALING;
+float force_light_scaling          = INITIAL_GAIN;
 volatile illuminance_t light_force = 0.0;
 volatile force_t filtered_force    = 0.0;
 
@@ -201,7 +201,7 @@ void StepMngr_Loop(void)
     static uint32_t last_frame_date           = 0;
     static int8_t sensor_dir                  = 1;
 #ifdef DETECTOR
-    static force_t force = (MAX_LIGHT_VALUE - OFFSET) / BASE_FORCE_LIGHT_SCALING;
+    static force_t force = (MAX_LIGHT_VALUE - OFFSET) / INITIAL_GAIN;
 #else
     static force_t force = 0.0;
 #endif
