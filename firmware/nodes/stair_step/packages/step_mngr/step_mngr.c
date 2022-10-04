@@ -56,9 +56,9 @@ void compute_slot_map(void);
 static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
 {
     static bool gate_feedback = false;
-    // We receive an end_detection, we need to initialize the sensor service to auto-update
     if (msg->header.cmd == END_DETECTION)
     {
+        // We receive an end_detection, we need to initialize the sensor service to auto-update
         gate_feedback = false;
         if (Luos_IsNodeDetected())
         {
@@ -109,20 +109,23 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
 
     if (msg->header.cmd == FORCE)
     {
+        // We receive a force value from our local load sensor
         ForceOD_ForceFromMsg((force_t *)&raw_force, msg);
     }
 
     if (msg->header.cmd == CONTROL)
     {
+        // We receive a control message from the gate to stop or start the animation
         control_app.unmap = msg->data[0];
         return;
     }
 
     if (msg->header.cmd == GET_CMD)
     {
+        // We receive a get command from the gate, we need to send the current state of the app
         if (gate_feedback == false)
         {
-            // We have to setup things for the gate.
+            // We have to setup things for the gate for the first execution.
             gate_feedback = true;
             if (Luos_IsNodeDetected())
             {
@@ -152,12 +155,14 @@ static void StepMngr_MsgHandler(service_t *service, msg_t *msg)
             }
         }
         msg_t pub_msg;
-        // fill the message infos
+        // Fill the message infos
         pub_msg.header.target_mode = ID;
         pub_msg.header.target      = msg->header.source;
+        // Send back the calculated light intensity
         IlluminanceOD_IlluminanceToMsg((illuminance_t *)&light_force, &pub_msg);
         Luos_SendMsg(service, &pub_msg);
 
+        // Send back the filtered force
         ForceOD_ForceToMsg((force_t *)&filtered_force, &pub_msg);
         Luos_SendMsg(service, &pub_msg);
         return;
@@ -185,6 +190,7 @@ void StepMngr_Init(void)
 void StepMngr_Loop(void)
 {
 #ifdef DETECTOR
+    // Perform a detection at boot if we are in detector mode
     static bool detection_done = false;
     if (((Luos_GetSystick() - boot_time) > 1000) & !detection_done)
     {
@@ -232,6 +238,7 @@ void StepMngr_Loop(void)
             force_light_scaling = MAX_LIGHT_VALUE / force;
         }
         LUOS_ASSERT(value <= 255.0f);
+        // Write the new value and clamp it to 0
         if ((value) < 1.0f)
         {
             light_intensity[0] = 0;
@@ -242,12 +249,13 @@ void StepMngr_Loop(void)
         {
             light_intensity[0] = (uint8_t)value;
         }
-        light_force         = light_intensity[0];
+        // Save the value allowing to send it back to a Gate
+        light_force         = (float)light_intensity[0];
         last_animation_date = Luos_GetSystick();
     }
 
     // Check Frame timing
-    if ((Luos_GetSystick() - last_frame_date >= FRAME_RATE_MS) & (control_app.flux == PLAY))
+    if (((Luos_GetSystick() - last_frame_date) >= FRAME_RATE_MS) && (control_app.flux == PLAY))
     {
         /*
          * We have to compute a frame
