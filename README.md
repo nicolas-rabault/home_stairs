@@ -1,6 +1,13 @@
-# home_stairs
+# My home stairs overkill automation project
 
-This project contain everything allowing you to create your own led animated stairs at home.
+I create this to make my stairs awesome.
+Watch the video :
+
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=MT_hdq4ZtUk" target="_blank">
+ <img src="http://img.youtube.com/vi/MT_hdq4ZtUk/mqdefault.jpg" alt="Watch the video" />
+</a>
+
+This project contain everything allowing you to create your own overkill led animated stairs at home.
 This project use :
 
  - [Kicad](https://www.kicad.org/) for the hardware design

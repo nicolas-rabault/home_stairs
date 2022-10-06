@@ -178,7 +178,7 @@ void StepMngr_Init(void)
 {
     revision_t revision = {.major = 1, .minor = 0, .build = 0};
     // By default this app running
-    control_app.flux = PLAY;
+    control_app.flux = STOP;
     // Create App
     app = Luos_CreateService(StepMngr_MsgHandler, STEP_APP, "step", revision);
 
@@ -196,6 +196,7 @@ void StepMngr_Loop(void)
     {
         Luos_Detect(app);
         detection_done = true;
+        return;
     }
 #endif
     /*
@@ -212,7 +213,7 @@ void StepMngr_Loop(void)
 #endif
 
     // Check Animation timing : time = distance/speed
-    if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))))
+    if ((Luos_GetSystick() - last_animation_date >= ((uint32_t)((DIST_RES / (WAVE_SPEED * ANIMATION_SMOOTH)) * 1000.0))) && !(control_app.flux == STOP))
     {
         /*
          * We have to insert weight values at light_intensity slot 0.
@@ -294,7 +295,8 @@ void frame_transmit(uint8_t *light_intensity)
         {
             // Compute the delta intensity of this led
             LUOS_ASSERT(abs((int)light_intensity[slot_map[step_index][led_index]] - (int)frame[step_index][led_index]) <= 128);
-            delta_frame[led_index]       = (int)light_intensity[slot_map[step_index][led_index]] - (int)frame[step_index][led_index];
+            delta_frame[led_index] = (int)light_intensity[slot_map[step_index][led_index]] - (int)frame[step_index][led_index];
+
             frame[step_index][led_index] = light_intensity[slot_map[step_index][led_index]];
             if (delta_frame[led_index] != 0)
             {
@@ -333,6 +335,11 @@ void compute_slot_map(void)
      * To do that we have to make the first step do the detection to have a deterministic numbers on steps
      * This way the (node_id - 1) represent the step number
      */
+#ifdef DETECTOR
+    color_t color_dist[LED_NBR] = {0};
+    const float phase2          = 2.0f * M_PI / 3.0f;
+    const float phase3          = 4.0f * M_PI / 3.0f;
+#endif
     uint16_t my_nodeid = RoutingTB_NodeIDFromID(app->ll_service->id);
     search_result_t color_list;
     RTFilter_Reset(&color_list);
@@ -357,16 +364,40 @@ void compute_slot_map(void)
     for (int step_index = 0; step_index < STEP_NUMBER; step_index++) // Step
     {
         // Compute the x distance of this step
-        const float x = step_index * (STAIR_LENGHT / STEP_NUMBER) - wave_center_x;
+        const float color_x = step_index * (STAIR_LENGHT / STEP_NUMBER);
+        const float x       = color_x - wave_center_x;
         // Parse all the led fo each steps
         for (int led_index = 0; led_index < LED_NBR; led_index++) // Led
         {
-            // Compute the x distance of this led
-            const float y = led_index * SPACE_BETWEEN_LED - wave_center_y;
+            // Compute the y distance of this led
+            const float color_y = led_index * SPACE_BETWEEN_LED;
+            const float y       = color_y - wave_center_y;
             // Compute the distance of this led from the wave source
             double distance = sqrt(((x) * (x)) + ((y) * (y)));
             // Depending on this distance define the corresponding slot on light_intensity and save this slot in the slot_map
             slot_map[step_index][led_index] = (uint16_t)(distance / DIST_RES);
+#ifdef DETECTOR
+            double color_distance = sqrt(((color_x) * (color_x)) + ((color_y) * (color_y)));
+            // Precompute the Color distribution
+            color_dist[led_index].r = (uint8_t)(255 * sin(color_distance / STAIR_LENGHT));
+            color_dist[led_index].g = (uint8_t)(255 * sin(color_distance / STAIR_LENGHT - phase2));
+            color_dist[led_index].b = (uint8_t)(255 * sin(color_distance / STAIR_LENGHT - phase3));
+#endif
         }
+#ifdef DETECTOR
+        // Send the color distribution to this step
+        msg_t msg;
+        // step_index should be the index of the concerned app
+        msg.header.target      = color_list.result_table[step_index]->id;
+        msg.header.target_mode = IDACK;
+        msg.header.cmd         = PARAMETERS;
+        msg.header.size        = sizeof(color_dist);
+        memcpy(msg.data, color_dist, sizeof(color_dist));
+        while (Luos_SendMsg(app, &msg) != SUCCEED)
+            ;
+#endif
     }
+    Luos_Loop();
+    // We are ready to compute the light intensity
+    control_app.flux = PLAY;
 }
